@@ -1,0 +1,20 @@
+.env
+.venv
+.direnv
+.DS_Store
+*__pycache__
+*generate_*.py
+
+# Ignore everything in data directories...
+**/data/**/*
+# ...but re-include directories, so we can find files...
+!**/data/**/
+# ...and re-include python files.
+!**/data/**/*.py
+**/tokenizer/
+**/checkpoints/
+**/out-shakespeare/
+.vscode/
+__pycache__/
+
+start_gpu_materialized.sh
