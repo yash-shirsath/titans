@@ -2,3 +2,4 @@ torch
 datasets
 jaxtyping
 beartype
+local-attention
