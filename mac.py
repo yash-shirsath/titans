@@ -11,16 +11,25 @@ from data.shakespeare.dataloader import get_dataloaders
 class MACConfig:
     d_model: int = 512
     seq_len: int = 1024
+    num_tokens: int = 256  # Vocabulary size
 
 
 class MACTransformer(Module):
     def __init__(self, config: MACConfig):
         super().__init__()
         self.d_model = config.d_model
+        self.num_tokens = config.num_tokens
+        
+        # Simple embedding and output layers for basic functionality
+        self.token_embedding = t.nn.Embedding(config.num_tokens, config.d_model)
+        self.output_projection = Linear(config.d_model, config.num_tokens)
 
-    @beartype
-    def forward(self, x: Float[t.Tensor, "batch seq"]) -> t.Tensor:
-        return x
+    @beartype  
+    def forward(self, x: t.Tensor) -> t.Tensor:
+        # Basic implementation: embed tokens and project to logits
+        embedded = self.token_embedding(x)  # (batch, seq, d_model)
+        logits = self.output_projection(embedded)  # (batch, seq, num_tokens)
+        return logits
 
 
 if __name__ == "__main__":
