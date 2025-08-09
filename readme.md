@@ -100,7 +100,7 @@ TODO LIST:
 
 - Implement Mactransformer without segmentation
     -   keep current llm generated macattention.
-    -   apply absolute pos embedding in forward
-    -   loop through blocks
-    -   output projection to vocab space
-    -   return logits
+    -   apply absolute pos embedding in forward ✅
+    -   loop through blocks ✅
+    -   output projection to vocab space ✅
+    -   return logits ✅

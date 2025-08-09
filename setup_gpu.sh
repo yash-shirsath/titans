@@ -1,0 +1,1 @@
+export WANDB_DIR=/workspace/.wandb

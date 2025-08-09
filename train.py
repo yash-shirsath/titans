@@ -51,7 +51,7 @@ def get_model(model_type: str, seq_len: int):
     return model, model_config
 
 
-def train(model_type: Literal["local", "mac"] = "local", log: bool = False):
+def train(model_type: Literal["local", "mac"] = "mac", log: bool = False):
     """
     Train a transformer model.
     

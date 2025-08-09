@@ -15,6 +15,7 @@ class MACConfig:
     seq_len: int = 1024
     num_tokens: int = 256  # Vocabulary size
     num_hidden_layers: int = 12
+    num_heads: int = 1
 
 class MacAttention(Module):
     """
@@ -153,17 +154,30 @@ class MACTransformer(Module):
         self.num_tokens = config.num_tokens
         self.num_hidden_layers = config.num_hidden_layers
 
-        self.layers = nn.ModuleList([MacAttention(config.d_model, config.num_hidden_layers) for _ in range(config.num_hidden_layers)])
-        # Simple embedding and output layers for basic functionality
-        self.token_embedding = t.nn.Embedding(config.num_tokens, config.d_model)
-        self.output_projection = Linear(config.d_model, config.num_tokens)
+        self.layers = nn.ModuleList([MacAttention(
+            dim=config.d_model,
+            n_heads=config.num_heads,
+            memory=Memory(),
+        ) for _ in range(config.num_hidden_layers)])
+
+
+        self.token_embedding = nn.Embedding(config.num_tokens, config.d_model)
+        self.absolute_pos_embedding = nn.Embedding(config.seq_len, config.d_model)
+        self.output_norm = nn.RMSNorm(config.d_model)
+        self.to_vocab = Linear(config.d_model, config.num_tokens)
 
     @beartype  
     def forward(self, x: t.Tensor) -> t.Tensor:
-        # Basic implementation: embed tokens and project to logits
-        embedded = self.token_embedding(x)  # (batch, seq, d_model)
+        B,S = x.shape
+        x = self.token_embedding(x)  
+        position_ids = t.arange(S, device=x.device)
+        x = x + self.absolute_pos_embedding(position_ids)
 
-        logits = self.output_projection(embedded)  # (batch, seq, num_tokens)
+        for layer in self.layers:
+            x = layer(x)
+
+        x = self.output_norm(x)
+        logits = self.to_vocab(x) 
         return logits
 
 
