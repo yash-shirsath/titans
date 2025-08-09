@@ -5,7 +5,7 @@ import tqdm
 import random
 import fire
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, Optional
 import wandb
 # Import model-specific modules
 from local_transformer import get_local_transformer, LocalTransformerConfig
@@ -51,15 +51,20 @@ def get_model(model_type: str, seq_len: int):
     return model, model_config
 
 
-def train(model_type: Literal["local", "mac"] = "mac", log: bool = False):
+def train(model_type: Literal["local", "mac"] = "mac", log: bool = False, run_name: Optional[str] = None):
     """
     Train a transformer model.
     
     Args:
         model_type: Type of model to train ("local" or "mac")
         log: Whether to log metrics to Weights & Biases
+        run_name: Optional name for the W&B run. If provided, logging will be automatically enabled.
     """
     print(f"Training {model_type} model...")
+    
+    # If run_name is provided, enable logging
+    if run_name is not None:
+        log = True
     
     # Initialize training configuration
     train_config = TrainingConfig()
@@ -69,14 +74,18 @@ def train(model_type: Literal["local", "mac"] = "mac", log: bool = False):
     
     # Initialize Weights & Biases if logging is enabled
     if log:
-        wandb.init(
-            project="titans",
-            config={
+        # Initialize wandb with optional run name
+        init_args = {
+            "project": "titans",
+            "config": {
                 "model_type": model_type,
                 "train_config": train_config.__dict__,
                 "model_config": model_config.__dict__,
             }
-        )
+        }
+        if run_name is not None:
+            init_args["name"] = run_name
+        wandb.init(**init_args)
         print("Initialized Weights & Biases logging")
     print(f"Model parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad):,}")
     
