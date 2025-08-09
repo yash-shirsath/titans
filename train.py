@@ -6,7 +6,7 @@ import random
 import fire
 from dataclasses import dataclass
 from typing import Literal
-
+import wandb
 # Import model-specific modules
 from local_transformer import get_local_transformer, LocalTransformerConfig
 from mac import MACTransformer, MACConfig
@@ -48,15 +48,16 @@ def get_model(model_type: str, seq_len: int):
     else:
         raise ValueError(f"Unknown model type: {model_type}. Choose 'local' or 'mac'.")
     
-    return model
+    return model, model_config
 
 
-def train(model_type: Literal["local", "mac"] = "local"):
+def train(model_type: Literal["local", "mac"] = "local", log: bool = False):
     """
     Train a transformer model.
     
     Args:
         model_type: Type of model to train ("local" or "mac")
+        log: Whether to log metrics to Weights & Biases
     """
     print(f"Training {model_type} model...")
     
@@ -64,7 +65,19 @@ def train(model_type: Literal["local", "mac"] = "local"):
     train_config = TrainingConfig()
     
     # Initialize model
-    model = get_model(model_type, train_config.seq_len)
+    model, model_config = get_model(model_type, train_config.seq_len)
+    
+    # Initialize Weights & Biases if logging is enabled
+    if log:
+        wandb.init(
+            project="titans",
+            config={
+                "model_type": model_type,
+                "train_config": train_config.__dict__,
+                "model_config": model_config.__dict__,
+            }
+        )
+        print("Initialized Weights & Biases logging")
     print(f"Model parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad):,}")
     
     # Get dataloaders
@@ -109,7 +122,13 @@ def train(model_type: Literal["local", "mac"] = "local"):
             loss = nn.CrossEntropyLoss()(logits.reshape(-1, logits.size(-1)), target_seq.reshape(-1))
             loss.backward()
         
-        print(f'training loss: {loss.item()}')
+        train_loss = loss.item()
+        print(f'training loss: {train_loss}')
+        
+        # Log training loss to W&B
+        if log:
+            wandb.log({"train_loss": train_loss, "step": i})
+        
         torch.nn.utils.clip_grad_norm_(model.parameters(), 0.5)
         optim.step()
         optim.zero_grad()
@@ -122,7 +141,12 @@ def train(model_type: Literal["local", "mac"] = "local"):
                 val_target = val_batch[:, 1:].long()
                 val_logits = model(val_input)
                 val_loss = nn.CrossEntropyLoss()(val_logits.reshape(-1, val_logits.size(-1)), val_target.reshape(-1))
-                print(f'validation loss: {val_loss.item()}')
+                val_loss_item = val_loss.item()
+                print(f'validation loss: {val_loss_item}')
+                
+                # Log validation loss to W&B
+                if log:
+                    wandb.log({"val_loss": val_loss_item, "step": i})
         
         if i % train_config.generate_every == 0:
             model.eval()
@@ -143,6 +167,10 @@ def train(model_type: Literal["local", "mac"] = "local"):
                 print('*' * 100)
     
     print(f"Training {model_type} model completed!")
+    
+    # Finish W&B run
+    if log:
+        wandb.finish()
 
 
 if __name__ == "__main__":
