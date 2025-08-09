@@ -14,6 +14,7 @@ class MACConfig:
     d_model: int = 512
     seq_len: int = 1024
     num_tokens: int = 256  # Vocabulary size
+    num_hidden_layers: int = 12
 
 class MacAttention(Module):
     """
@@ -150,7 +151,9 @@ class MACTransformer(Module):
         super().__init__()
         self.d_model = config.d_model
         self.num_tokens = config.num_tokens
-        
+        self.num_hidden_layers = config.num_hidden_layers
+
+        self.layers = nn.ModuleList([MacAttention(config.d_model, config.num_hidden_layers) for _ in range(config.num_hidden_layers)])
         # Simple embedding and output layers for basic functionality
         self.token_embedding = t.nn.Embedding(config.num_tokens, config.d_model)
         self.output_projection = Linear(config.d_model, config.num_tokens)
@@ -159,6 +162,7 @@ class MACTransformer(Module):
     def forward(self, x: t.Tensor) -> t.Tensor:
         # Basic implementation: embed tokens and project to logits
         embedded = self.token_embedding(x)  # (batch, seq, d_model)
+
         logits = self.output_projection(embedded)  # (batch, seq, num_tokens)
         return logits
 
