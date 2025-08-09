@@ -45,8 +45,16 @@ They’re position‑agnostic anchors
 
 RoPE is applied to (q, k) before concatenating pmk, pmv, so persistent keys do not get rotary positions in this implementation. They become global, position‑free anchors that every segment can attend to the same way. If you simply prepended tokens, they would get positional encoding and drift with segment layout.
 
+## Should persistent memory be shared across layers? 
+I think not. If we keep the same persistent memory throughout all blocks, we may get overload the persistent memory unless we have some sort of forget gate. 
+TODO: let's experiment with this
+
+## How to implement equation 25? 
+The paper doesn't specify what ⊗ is. Let's use an mlp to mix memory output back 
 
 
+## TODO: Segmented Attention
+Paper says to segment sequence. That logic should live in MacAttention. 
 
 
 

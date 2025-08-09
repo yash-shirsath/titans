@@ -34,7 +34,7 @@ class Memory(Module):
         pass
 
     def retrieve(self, x):
-        pass
+        return x
 
     @jaxtyped(typechecker=beartype)
     def forward(
