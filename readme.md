@@ -60,9 +60,10 @@ long term memory lives in sequence space. we know that for sure.
 
 lets think of memory mlps as little storage units. 
 if we share those storage units across layers, they might be storing information in different vector spaces. 
-but we do want some information to carry over from ttt 
-so let's designate parameters at the transformer level
+so maybe it makes sense to keep long term memory at the block level. it's also much simpler to implement this way. 
+this paper is about accumulating information across the sequence dimension. let's not try to innovate on information flow across layers
 
+I think a future todo could be to implement some sort of transformer level long term memory. 
 
 
 ## How to treat persistent memory 
