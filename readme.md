@@ -43,7 +43,7 @@ call MacAttention on resulting sequence:
 ### Option B 
 prepend long term in macattention forward. 
 
-ok this is minor. but i like B better. 
+ok this is minor. but i like B better. oh wait
 
 Transformer 
 - input embedding
@@ -53,6 +53,15 @@ Transformer
 MacAttention 
 - equations 21-25
 
+## How to treat longerm memory 
+
+### is long term memory block level or transformer level? 
+long term memory lives in sequence space. we know that for sure. 
+
+lets think of memory mlps as little storage units. 
+if we share those storage units across layers, they might be storing information in different vector spaces. 
+but we do want some information to carry over from ttt 
+so let's designate parameters at the transformer level
 
 
 
@@ -65,9 +74,8 @@ They’re position‑agnostic anchors
 
 RoPE is applied to (q, k) before concatenating pmk, pmv, so persistent keys do not get rotary positions in this implementation. They become global, position‑free anchors that every segment can attend to the same way. If you simply prepended tokens, they would get positional encoding and drift with segment layout.
 
-### Should persistent memory be shared across layers? 
-I think not. If we keep the same persistent memory throughout all blocks, we may get overload the persistent memory unless we have some sort of forget gate. 
-TODO: let's experiment with this
+### Is persistent memory block level or tranformer level? 
+I think persistent memory is block level. they are just attention sinks
 
 ## How to implement equation 25? 
 The paper doesn't specify what ⊗ is. Let's use an mlp to mix memory output back 
@@ -104,3 +112,12 @@ TODO LIST:
     -   loop through blocks ✅
     -   output projection to vocab space ✅
     -   return logits ✅
+
+- fix llm generated macattention 
+    - 22 
+    - 23 
+    - 24 
+    - 25
+
+- segment 
+- memory 

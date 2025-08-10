@@ -5,6 +5,7 @@
 *__pycache__
 *generate_*.py
 
+wandb/
 
 .vscode/
 __pycache__/

@@ -1,3 +1,4 @@
+from einops import repeat
 import torch as t
 import torch.nn as nn
 from torch.nn import Module, Linear, LayerNorm, Dropout, MultiheadAttention
@@ -16,6 +17,7 @@ class MACConfig:
     num_tokens: int = 256  # Vocabulary size
     num_hidden_layers: int = 12
     num_heads: int = 1
+    num_longterm_mem_tokens: int = 16
 
 class MacAttention(Module):
     """
@@ -102,9 +104,11 @@ class MacAttention(Module):
         B, S, D = x.shape
         assert D == self.dim
 
+        x = self.ln_q(x)
+
         # 1) queries for memory read
         #    q: [B, S, D]
-        q = self.W_q(self.ln_q(x))
+        q = self.W_q(x)
 
         # 2) retrieve historical context
         #    m_hist: [B, S, D]
@@ -166,6 +170,8 @@ class MACTransformer(Module):
         self.output_norm = nn.RMSNorm(config.d_model)
         self.to_vocab = Linear(config.d_model, config.num_tokens)
 
+        self.long_term_memory_seq = nn.Parameter(t.randn(config.num_longterm_mem_tokens, config.d_model)) 
+
     @beartype  
     def forward(self, x: t.Tensor) -> t.Tensor:
         B,S = x.shape
@@ -173,12 +179,30 @@ class MACTransformer(Module):
         position_ids = t.arange(S, device=x.device)
         x = x + self.absolute_pos_embedding(position_ids)
 
+        x = self.insert_lt_mems(x)
+
         for layer in self.layers:
             x = layer(x)
+
+        x = self.remove_lt_mems(x)
 
         x = self.output_norm(x)
         logits = self.to_vocab(x) 
         return logits
+
+    def insert_lt_mems(self, x: t.Tensor) -> t.Tensor:
+        B,_ = x.shape
+        h_t = repeat(self.long_term_memory_seq, 'S D -> B S D', b = B)
+        x = t.cat((h_t, x), dim = -2)
+        return x
+    
+    def view_lt_mems(self, x: t.Tensor) -> t.Tensor:
+        B,_ = x.shape
+        return x[:, :self.num_longterm_mem_tokens, :]
+
+    def remove_lt_mems(self, x: t.Tensor) -> t.Tensor:
+        B,_ = x.shape
+        return x[:, self.num_longterm_mem_tokens:, :]
 
 
 if __name__ == "__main__":
