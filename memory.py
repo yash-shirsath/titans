@@ -1,4 +1,5 @@
 # %% # Implements Neural Memory Block
+from einops import rearrange
 import torch as t
 from torch.nn import Sequential, Module, Linear, SiLU
 from beartype import beartype
@@ -20,17 +21,9 @@ class MLP(Module):
     @jaxtyped(typechecker=beartype)
     def forward(
         self,
-        x: Float[t.Tensor, "batch seq dim"],
-    ) -> Float[t.Tensor, "batch seq dim"]:
-        # Reshape to (batch * seq, dim) for processing through linear layers
-        batch_size, seq_len, dim = x.shape
-        x_reshaped = x.view(-1, dim)  # (batch * seq, dim)
-
-        # Process through MLP layers
-        output = self.layers(x_reshaped)  # (batch * seq, dim)
-
-        # Reshape back to original shape
-        return output.view(batch_size, seq_len, dim)  # (batch, seq, dim)
+        x: Float[t.Tensor, "batch dim"],
+    ) -> Float[t.Tensor, "batch dim"]:
+        return self.layers(x)
 
 
 class Memory(Module):
@@ -48,12 +41,9 @@ class Memory(Module):
     @jaxtyped(typechecker=beartype)
     def retrieve(
         self,
-        x: Float[t.Tensor, "batch seq dim"],  # type: ignore
-    ) -> Float[t.Tensor, "batch seq dim"]:  # type: ignore
-        # Project input to query: q_t = x_t W_Q
-        q_t = self.W_Q(x)
-
-        # Retrieve memory via forward pass without weight update: y_t = M*(q_t)
-        y_t = self.memory_module(q_t)
-
-        return y_t
+        x: Float[t.Tensor, "batch seq dim"],
+    ) -> Float[t.Tensor, "batch seq dim"]:
+        B = x.shape[0]
+        q = self.W_Q(x)
+        ht = self.memory_module(rearrange(q, "b s ... -> (b s) ..."))
+        return rearrange(ht, "(b s) ... -> b s ...", b=B)
