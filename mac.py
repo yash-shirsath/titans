@@ -13,7 +13,7 @@ class MACConfig:
     d_model: int = 512
     seq_len: int = 1024
     num_tokens: int = 256  # Vocabulary size
-    num_hidden_layers: int = 12
+    num_hidden_layers: int = 2
     num_heads: int = 1
     num_longterm_mem_tokens: int = 16
 
