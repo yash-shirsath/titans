@@ -1,10 +1,8 @@
-from einops import repeat
 import torch as t
 import torch.nn as nn
-from torch.nn import Module, Linear, LayerNorm, Dropout, MultiheadAttention
-from typing import Optional
+import torch.nn.functional as F
+from torch.nn import Module, Linear
 from dataclasses import dataclass
-from jaxtyping import Float
 from beartype import beartype
 from data.shakespeare.dataloader import get_dataloaders
 from memory import Memory
@@ -132,6 +130,8 @@ class MACTransformer(Module):
         self.d_model = config.d_model
         self.num_tokens = config.num_tokens
         self.num_hidden_layers = config.num_hidden_layers
+        self.max_seq_len = config.seq_len
+        self.has_embed_unembed = True  # This model has embedding and unembedding layers
 
         self.layers = nn.ModuleList(
             [
@@ -155,7 +155,7 @@ class MACTransformer(Module):
         )
 
     @beartype
-    def forward(self, x: t.Tensor) -> t.Tensor:
+    def forward(self, x: t.Tensor):
         B, S = x.shape
         x = self.token_embedding(x)
         position_ids = t.arange(S, device=x.device)
@@ -167,6 +167,36 @@ class MACTransformer(Module):
         x = self.output_norm(x)
         logits = self.to_vocab(x)
         return logits
+
+    def generate(self, prime, seq_len, temperature=1.0, filter_thres=0.9, **kwargs):
+        assert self.has_embed_unembed
+        assert temperature >= 0.0
+
+        n = prime.shape[1]
+        out = prime
+
+        for _ in range(seq_len):
+            logits = self.forward(out[:, -self.max_seq_len :], **kwargs)
+
+            filtered_logits = top_k(logits[:, -1], thres=filter_thres)
+
+            if temperature == 0.0:
+                sampled = filtered_logits.argmax(dim=-1, keepdim=True)
+            else:
+                probs = F.softmax(filtered_logits / temperature, dim=-1)
+                sampled = t.multinomial(probs, 1)
+
+            out = t.cat((out, sampled), dim=-1)
+
+        return out[:, n:]
+
+
+def top_k(logits, thres=0.9):
+    k = int((1 - thres) * logits.shape[-1])
+    val, ind = t.topk(logits, k)
+    probs = t.full_like(logits, float("-inf"))
+    probs.scatter_(1, ind, val)
+    return probs
 
 
 if __name__ == "__main__":
