@@ -170,6 +170,7 @@ class MACTransformer(Module):
         self.output_norm = nn.RMSNorm(config.d_model)
         self.to_vocab = Linear(config.d_model, config.num_tokens)
 
+        self.num_longterm_mem_tokens = config.num_longterm_mem_tokens
         self.long_term_memory_seq = nn.Parameter(t.randn(config.num_longterm_mem_tokens, config.d_model)) 
 
     @beartype  
@@ -191,17 +192,15 @@ class MACTransformer(Module):
         return logits
 
     def insert_lt_mems(self, x: t.Tensor) -> t.Tensor:
-        B,_ = x.shape
-        h_t = repeat(self.long_term_memory_seq, 'S D -> B S D', b = B)
+        B = x.shape[0]
+        h_t = repeat(self.long_term_memory_seq, 'S D -> B S D', B = B)
         x = t.cat((h_t, x), dim = -2)
         return x
     
     def view_lt_mems(self, x: t.Tensor) -> t.Tensor:
-        B,_ = x.shape
         return x[:, :self.num_longterm_mem_tokens, :]
 
     def remove_lt_mems(self, x: t.Tensor) -> t.Tensor:
-        B,_ = x.shape
         return x[:, self.num_longterm_mem_tokens:, :]
 
 
