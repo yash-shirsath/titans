@@ -91,34 +91,15 @@ Paper says to segment sequence. each segment is added as a batch
 Lets start with standard absoulte positional embeddings. generate position_ids inside transformer.forward. then we can decide whether we want inter-segment embeddings as well once we get to that. apply rope within macattention
 
 
+# Memory 
+## Store
+- surprise is calculated per mb of sequence 
+- associative scan for linear recurrences: https://www.cs.cmu.edu/~guyb/papers/Ble93.pdf
 
-what conepts do we have: 
-- long term memory 
+
+
+Todo
+
 - persistent memory 
-- macattention 
-
-macblock calls neural memory. which returns long term memory tokens
-prepend to seq and pass to macattention 
-output of macattention is used to nueralmemory.update
-
-return neuralmemory.retrieve(out) + out  eq.25
 
 
-
-TODO LIST: 
-
-- Implement Mactransformer without segmentation
-    -   keep current llm generated macattention.
-    -   apply absolute pos embedding in forward ✅
-    -   loop through blocks ✅
-    -   output projection to vocab space ✅
-    -   return logits ✅
-
-- fix llm generated macattention 
-    - 22 
-    - 23 
-    - 24 
-    - 25
-
-- segment 
-- memory 
