@@ -1,3 +1,14 @@
+# Summary 
+
+This repository is my attempt to implement Titans: Learning to Memorize at Test Time. 
+https://arxiv.org/abs/2501.00663
+
+The main ideological predecessor to this paper is Learning to Learn at Test Time (https://arxiv.org/abs/2407.04620) which describes test-time-training layers. The idea is that the outer optimization loop (next token prediction) is responsible for training most parameters. However, during a single forward pass, another inner optimization loop optimizes a smaller set of parameters to learn as the model reads a sequence. 
+
+Titans extends TTT by introducing momentum and forget gates to the memory architecture as well as presenting three ways to integrate memory into a vanilla transformer (memory as context, memory as gate, and memory as layer). 
+
+This repo mainly focusses on memory as context. 
+
 # Design Decisions
 
 ## Main Separation of Concerns
@@ -84,8 +95,9 @@ Lets start with standard absoulte positional embeddings. generate position_ids i
     - understanding scans: https://chatgpt.com/c/689902a0-11cc-8333-9268-34d8c7b1e2e2
 
 # Todo
-
 - persistent memory 
-- windowed attention 
+- scans
+- windowed attention
+- forget gates 
 
 
