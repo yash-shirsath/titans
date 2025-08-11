@@ -78,7 +78,7 @@ RoPE is applied to (q, k) before concatenating pmk, pmv, so persistent keys do n
 I think persistent memory is block level. they are just attention sinks
 
 ## How to implement equation 25? 
-The paper doesn't specify what ⊗ is. Let's use an mlp to mix memory output back 
+The paper doesn't specify what ⊗ is. Let's use an mlp to mix memory output back into the residual stream. 
 
 
 ## Positional Embeddings
@@ -96,7 +96,10 @@ Lets start with standard absoulte positional embeddings. generate position_ids i
 # Todo
 - persistent memory 
 - scans
-- windowed attention
+- piecewise
+    - inner dim for the attention block + multiheaded?
+    - windowed attention
 - forget gates 
+- norms / initializations
 
 

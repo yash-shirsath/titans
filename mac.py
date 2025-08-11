@@ -1,3 +1,4 @@
+from einops import repeat
 import torch as t
 import torch.nn as nn
 import torch.nn.functional as F
@@ -41,11 +42,11 @@ class MacAttention(Module):
         self.P = persistent_tokens
         self.use_readback_gate = use_readback_gate
 
-        # persistent tokens (learnable, shared across batch)
-        # shape: [1, P, D], will be repeated along batch at runtime
-        self.persistent = nn.Parameter(t.randn(1, persistent_tokens, dim) / dim**0.5)
+        self.W_QKV = nn.Linear(dim, dim * 3)
 
-        self.lt_mem_proj = nn.Linear(dim, dim, bias=True)
+        # persistent tokens (learnable, shared across batch)
+        # shape: [2, P, D], will be repeated along batch at runtime. inlcudes kv
+        self.persistent = nn.Parameter(t.randn(2, persistent_tokens, dim))
 
         # in-block attention over [persistent || m_hist || x]
         self.attn = nn.MultiheadAttention(
@@ -69,7 +70,6 @@ class MacAttention(Module):
             nn.SiLU(),
             nn.Linear(ff_mult * dim, dim),
         )
-        self.dropout_ff = nn.Dropout(attn_dropout)
 
         # attach (shared or per-layer) memory module
         assert memory is not None, "MACBlock requires a MemoryModule instance"
@@ -93,33 +93,36 @@ class MacAttention(Module):
         """
         B, S, D = x.shape
 
+        # prepend lt
         ht = self.memory.retrieve(x)  # b s d
         z = t.concat((ht, x), dim=1)  # b 2s d
 
-        L = 2 * S
-        attn_mask = self._build_causal_mask(L=L, device=x.device)
-        z = self.ln_attn_in(z)
-        y, _ = self.attn(z, z, z, attn_mask=attn_mask)
-        y = self.dropout_attn(y)
+        q, k, v = self.W_QKV(z).chunk(3, dim=-1)
 
-        y_cur = y[:, -S:, :]
+        # pm only has k v. doesn't query other tokens
+        pmk, pmv = repeat(self.persistent, "kv p d -> kv b p d", b=B).chunk(2, dim=0)
+        pmk, pmv = (
+            pmk.squeeze(0),
+            pmv.squeeze(0),
+        )  # squeeze the chunk dim. both should be b,p,d
 
-        # residual after attention context injection
-        x = x + y_cur
+        k = t.cat((pmk, k), dim=-2)
+        v = t.cat((pmv, v), dim=-2)
 
-        # 6) update memory with what to keep (post-attn features)
+        attn_out = F.scaled_dot_product_attention(q, k, v, is_causal=True)
+
+        y_cur = attn_out[:, -S:, :]  # remove lt
+
         self.memory.store(y_cur)
 
-        # 7) optional read-back + gate
         if self.use_readback_gate:
-            # m_now: [B, S, D]
-            m_now = self.memory.retrieve(y_cur)
-            z = t.cat([self.ln_gate(x), m_now], dim=-1)  # [B, S, 2D]
-            mixed = self.gate(z)  # [B, S, D]
-            x = x + self.proj_out(mixed)  # residual
+            m_now = self.memory.retrieve(y_cur)  # b,s,d
+            z = t.cat([m_now, self.ln_gate(x)], dim=-1)  # b, s, 2D
+            mixed = self.gate(z)  # b,s,d
+            x = x + self.proj_out(mixed)
 
         # 8) MLP + residual
-        x = x + self.dropout_ff(self.ff(self.ln_mlp(x)))  # [B, S, D]
+        x = x + self.ff(self.ln_mlp(x))  # [B, S, D]
 
         return x  # [B, S, D]
 
