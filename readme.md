@@ -1,22 +1,19 @@
 # Design Decisions
 
-## Memory Module 
+## Main Separation of Concerns
+
+### Memory Module 
+- contains MLP whose weights are updated by inner loops in forward pass
 - retrieve(q: [B, S, D]) -> [B, S, D]
-- update(x: [B, S, D]) -> None
-
-todo: finalize this
-
-## MACAttention 
-[B, S, D] -> [B, S, D]
-
-
-## MACTransformer
-
-stack MACBlocks and sprinkle in some sw attention ?
-
-## Should MemoryModules Be Shared? 
-
-lucidrains doesn't share, but could be interesting to have global memory. 
+- store(x: [B, S, D]) -> None
+### MACTransformer
+- embeddings
+    - positional 
+    - token 
+- stacks of MACBlocks
+    - prepend longterm mems  
+    - project out persistent mems
+    - mac (equations 21-25)
 
 ## How Should MACBLocks interact with attention 
 
@@ -43,15 +40,7 @@ call MacAttention on resulting sequence:
 ### Option B 
 prepend long term in macattention forward. 
 
-ok this is minor. but i like B better. oh wait
 
-Transformer 
-- input embedding
-- absolute positional embedding 
-- maybe intersegement embedding
-
-MacAttention 
-- equations 21-25
 
 ## How to treat longerm memory 
 
@@ -82,25 +71,21 @@ I think persistent memory is block level. they are just attention sinks
 The paper doesn't specify what ⊗ is. Let's use an mlp to mix memory output back 
 
 
-## TODO: Segmented Attention
-Paper says to segment sequence. each segment is added as a batch 
-
-
-
 ## Positional Embeddings
 Lets start with standard absoulte positional embeddings. generate position_ids inside transformer.forward. then we can decide whether we want inter-segment embeddings as well once we get to that. apply rope within macattention
 
 
-# Memory 
-## Store
+## Memory 
+### Store
 - surprise is calculated per mb of sequence 
-- associative scan for linear recurrences: https://www.cs.cmu.edu/~guyb/papers/Ble93.pdf
-- understanding scans: https://chatgpt.com/c/689902a0-11cc-8333-9268-34d8c7b1e2e2
+- currently implemented in a for loop.
+- future: 
+    - associative scan for linear recurrences: https://www.cs.cmu.edu/~guyb/papers/Ble93.pdf
+    - understanding scans: https://chatgpt.com/c/689902a0-11cc-8333-9268-34d8c7b1e2e2
 
-
-
-Todo
+# Todo
 
 - persistent memory 
+- windowed attention 
 
 

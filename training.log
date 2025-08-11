@@ -1,0 +1,15 @@
+Training mac model...
+Initialized Weights & Biases logging
+Model parameters: 11,843,328
+Total characters: 269,517,816
+Train characters: 242,566,034 (90.0%)
+Val characters: 26,951,782 (10.0%)
+Vocabulary size (unique bytes): 209
+Train dataset length: 236880
+Val dataset length: 26320
+Total characters: 269,517,816
+Train characters: 242,566,034 (90.0%)
+Val characters: 26,951,782 (10.0%)
+Vocabulary size (unique bytes): 209
+Train dataset length: 236880
+Val dataset length: 26320
