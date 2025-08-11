@@ -95,6 +95,7 @@ Lets start with standard absoulte positional embeddings. generate position_ids i
 ## Store
 - surprise is calculated per mb of sequence 
 - associative scan for linear recurrences: https://www.cs.cmu.edu/~guyb/papers/Ble93.pdf
+- understanding scans: https://chatgpt.com/c/689902a0-11cc-8333-9268-34d8c7b1e2e2
 
 
 
