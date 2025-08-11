@@ -21,7 +21,17 @@ class MLP(Module):
                 layers.append(SiLU())
         self.layers = Sequential(*layers)
 
+    def current_parameters(self) -> TensorDict:
+        return TensorDict(dict(self.named_parameters()))
+
+    @t.no_grad()
+    def forward_call(
+        self, x: Float[t.Tensor, "batch dim"]
+    ) -> Float[t.Tensor, "batch dim"]:
+        return functional_call(self, dict(self.current_parameters()), x)
+
     @jaxtyped(typechecker=beartype)
+    @t.no_grad()
     def forward(
         self,
         x: Float[t.Tensor, "batch dim"],
@@ -94,5 +104,6 @@ class Memory(Module):
     ) -> Float[t.Tensor, "batch seq dim"]:
         B = x.shape[0]
         q = self.W_Q(x)
-        ht = self.memory_mlp(rearrange(q, "b s ... -> (b s) ..."))
+        q = rearrange(q, "b s ... -> (b s) ...")
+        ht = self.memory_mlp.forward_call(q)
         return rearrange(ht, "(b s) ... -> b s ...", b=B)
