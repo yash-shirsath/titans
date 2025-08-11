@@ -1,5 +1,6 @@
 # %% # Implements Neural Memory Block
 from einops import rearrange
+from einops.layers.torch import Reduce
 import torch as t
 from torch.nn import Sequential, Module, Linear, SiLU
 from beartype import beartype
@@ -49,13 +50,20 @@ class Memory(Module):
         self.lr = lr
         self.chunk_size = chunk_size
 
+        self.W_Momentum = Sequential(
+            Reduce("b (n c) ... -> b n ...", "mean", c=chunk_size),
+            Linear(dim, 1, bias=False),
+        )
+
     @t.no_grad()
-    def _sgd_step(self, params: TensorDict, grads: TensorDict) -> TensorDict:
+    def _sgd_step(
+        self, cur: TensorDict, prev: TensorDict, grads: TensorDict, momentum: t.Tensor
+    ) -> TensorDict:
         # Apply SGD update: params = params - lr * grads
-        # This ensures we return a copy
         result_dict = {}
         for key, grad_tensor in grads.items():
-            result_dict[key] = params[key] - self.lr * grad_tensor
+            prev_update = cur[key] - prev[key]
+            result_dict[key] = cur[key] - self.lr * grad_tensor + momentum * prev_update
 
         return TensorDict(result_dict)
 
@@ -90,10 +98,18 @@ class Memory(Module):
             lambda t: rearrange(t, "b (s c) d -> (b s) c d", c=self.chunk_size), (k, v)
         )
 
+        momentum = self.W_Momentum(x).sigmoid()  # b,numchunk,1
+        momentum = rearrange(momentum, "b nc 1 -> (b nc) 1")
+
+        prev_weights = cur_weights.clone().detach()
         for mb in range(k.shape[0]):
             k_t, v_t = k[mb], v[mb]
             surprise = grad_fn(cur_weights, k_t, v_t)
-            cur_weights = self._sgd_step(cur_weights, surprise)
+            new_weights = self._sgd_step(
+                cur_weights, prev_weights, surprise, momentum[mb]
+            )
+            prev_weights = cur_weights
+            cur_weights = new_weights
 
         self.memory_mlp.load_state_dict(cur_weights)
 
