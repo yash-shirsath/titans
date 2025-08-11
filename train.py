@@ -11,7 +11,7 @@ import wandb
 # Import model-specific modules
 from local_transformer import get_local_transformer, LocalTransformerConfig
 from mac import MACTransformer, MACConfig
-from data.shakespeare.dataloader import get_dataloaders, decode_tokens
+from data.wiki.dataloader import get_dataloaders, decode_tokens
 
 
 @dataclass

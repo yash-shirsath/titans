@@ -11,3 +11,6 @@ wandb/
 __pycache__/
 
 start_gpu_materialized.sh
+
+# Large dataset files
+data/*/input.txt
