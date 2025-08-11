@@ -48,12 +48,7 @@ class MacAttention(Module):
         # shape: [2, P, D], will be repeated along batch at runtime. inlcudes kv
         self.persistent = nn.Parameter(t.randn(2, persistent_tokens, dim))
 
-        # in-block attention over [persistent || m_hist || x]
-        self.attn = nn.MultiheadAttention(
-            embed_dim=dim, num_heads=n_heads, dropout=attn_dropout, batch_first=True
-        )
         self.ln_attn_in = nn.LayerNorm(dim)
-        self.dropout_attn = nn.Dropout(attn_dropout)
 
         # optional read-back + gate
         if use_readback_gate:
@@ -93,6 +88,8 @@ class MacAttention(Module):
         """
         B, S, D = x.shape
 
+        x = self.ln_attn_in(x)
+
         # prepend lt
         ht = self.memory.retrieve(x)  # b s d
         z = t.concat((ht, x), dim=1)  # b 2s d
@@ -121,10 +118,9 @@ class MacAttention(Module):
             mixed = self.gate(z)  # b,s,d
             x = x + self.proj_out(mixed)
 
-        # 8) MLP + residual
         x = x + self.ff(self.ln_mlp(x))  # [B, S, D]
 
-        return x  # [B, S, D]
+        return x
 
 
 class MACTransformer(Module):
